@@ -562,6 +562,8 @@ public class TutorActor extends BasilicaAdapter implements TimeoutReceiver
 
 	private void processTutorTurns(List<String> tutorTurns)
 	{
+		source.userMessages.handleToShortMessages(tutorTurns);
+		
 		lastTutorTurns = tutorTurns;
 		//TODONE: fire pp TutorTurnsEvent too
 		String[] turns = tutorTurns.toArray(new String[0]);

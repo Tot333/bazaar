@@ -23,8 +23,6 @@ import javax.swing.JScrollPane;
 import javax.swing.JTable;
 import javax.swing.table.DefaultTableModel;
 
-import com.sun.xml.internal.fastinfoset.sax.Properties;
-
 import basilica2.agents.data.RollingWindow;
 import basilica2.agents.events.EchoEvent;
 import basilica2.agents.events.MessageEvent;
@@ -33,6 +31,7 @@ import basilica2.agents.events.priority.PrioritySource;
 import basilica2.agents.listeners.BasilicaListener;
 import basilica2.agents.listeners.BasilicaPreProcessor;
 import basilica2.util.MessageEventLogger;
+import basilica2.util.UserMessageHistory;
 import edu.cmu.cs.lti.basilica2.core.Agent;
 import edu.cmu.cs.lti.basilica2.core.Component;
 import edu.cmu.cs.lti.basilica2.core.Event;
@@ -50,14 +49,14 @@ public class InputCoordinator extends Component
     Set<Event> preprocessedEvents = new HashSet<Event>();
     Set<PriorityEvent> proposals = new HashSet<PriorityEvent>();
     private OutputCoordinator outputCoordinator;
-    private ArrayList<MessageEvent> multiLineMessageArray = new ArrayList<MessageEvent>();
-    private String multi_line_message_indicator = "...";
+    public UserMessageHistory userMessages = new UserMessageHistory();
+    
     
     public InputCoordinator(Agent a, String n, String pf) 
     {
         super(a, n, pf); 
         
-        multi_line_message_indicator = myProperties.getProperty("multi_line_message_indicator", "");
+        //showUI();
     }
     
     public void addPreProcessor(Class c, BasilicaPreProcessor prep)
@@ -155,9 +154,9 @@ public class InputCoordinator extends Component
             event = new EchoEvent(this, (MessageEvent)event);
         }
         
-        handleMultiLineMessage(event);
+        userMessages.handleUserMessage(event);
         
-        if(!multiLineMessageArray.isEmpty()) {
+        if(userMessages.multiMessageActive()) {
         	return;
         }
         
@@ -166,7 +165,6 @@ public class InputCoordinator extends Component
         	preProcessCurrentEvent(event);
             processAllEvents();
         }
-        
         
     }
     private void preProcessCurrentEvent(Event event) {
@@ -187,32 +185,6 @@ public class InputCoordinator extends Component
     		MessageEventLogger.logMessageEvent((MessageEvent)event);
     }
     
-    private void handleMultiLineMessage(Event event) {
-    	if(event instanceof MessageEvent) {
-        	MessageEvent test = (MessageEvent)event;
-        	String message = test.getText().trim();
-        	if(checkMultiMessage(message)) {
-        		multiLineMessageArray.add(test);
-        	} else if(multiLineMessageArray.size() > 0){
-        		
-        		Iterator<MessageEvent> iter = multiLineMessageArray.iterator(); 
-        		String concatenatedMessage =  iter.next().getText();
-        		while (iter.hasNext()) {
-        			concatenatedMessage += " | " + iter.next().getText();
-        		}
-        		
-        		test.setText(concatenatedMessage + " | " + message);
-        		multiLineMessageArray.clear();
-        	}
-        }
-    }
-
-    private boolean checkMultiMessage(String text) {
-    	if(text.length() > multi_line_message_indicator.length()) {
-    		return text.substring(text.length() - multi_line_message_indicator.length()).contentEquals(multi_line_message_indicator);
-    	}
-    	return false;
-    }
     
 	public boolean isAgentName(String from)
 	{
@@ -236,10 +208,6 @@ public class InputCoordinator extends Component
 	        		window.addEvent(me, me.getAllAnnotations());
 	        		window.addEvent(me, "incoming", me.getFrom()+"_turn", "student_turn");
                 }
-//                else if(eve instanceof EchoEvent)
-//                {
-//                	window.addEvent(eve, "tutor_turn");
-//                }
             }
 
             pushEventsToOutputCoordinator();
@@ -260,9 +228,6 @@ public class InputCoordinator extends Component
 
 	private void processOneEvent(Event eve)
 	{
-//		Class<? extends Event> eventClass = eve.getClass();
-//		if(listeners.containsKey(eventClass))
-		
 		super.notifyEventObservers(eve);
 		
         for(Class<? extends Event> keyClass : listeners.keySet())
